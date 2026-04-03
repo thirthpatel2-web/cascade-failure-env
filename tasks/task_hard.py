@@ -1,27 +1,43 @@
-# task_hard.py
+from environment.env import CascadeEnv
 
-def run_task(simulator):
-    """
-    Task: Choose correct action
-    """
+def run_task():
+    env = CascadeEnv()
+    obs = env.reset()
 
-    simulator.inject_failure("database")
-    simulator.propagate_failure()
+    total = 0.0
 
-    observation = {
-        "nodes": simulator.nodes,
-        "metrics": simulator.metrics,
-        "logs": simulator.logs
-    }
+    for _ in range(5):
+        action, target = None, None
 
-    return observation
+        # Priority 1: failed
+        for node, state in obs.nodes.items():
+            if state == "failed":
+                action, target = "restart_service", node
+                break
 
+        # Priority 2: critical
+        if action is None:
+            for node, state in obs.nodes.items():
+                if state == "critical":
+                    action, target = "scale_up", node
+                    break
 
-def grade(answer):
-    """
-    Correct answer = 'restart_service'
-    """
-    if answer == "restart_service":
-        return 1.0
-    else:
-        return 0.0
+        # Priority 3: warning
+        if action is None:
+            for node, state in obs.nodes.items():
+                if state == "warning":
+                    action, target = "scale_up", node
+                    break
+
+        # fallback
+        if action is None:
+            action, target = "do_nothing", "database"
+
+        obs, reward, done, _ = env.step(action, target)
+        total += reward.value
+
+        if done:
+            break
+
+    score = total / 5.0
+    return float(min(max(score, 0.0), 1.0))

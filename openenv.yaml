@@ -1,3 +1,25 @@
 name: cascade-failure-env
-description: DevOps Cascade Failure AI Environment
+description: A DevOps cascade failure simulation environment for evaluating AI agents on incident response in distributed systems.
+entrypoint: app.py
+
+tags:
+  - openenv
+  - devops
+  - reinforcement-learning
+  - cascade-failure
+
 version: 1.0
+
+environment:
+  observation_space:
+    nodes: dict
+    metrics: dict
+    logs: list
+
+  action_space:
+    action: string
+    target: string
+
+  reward:
+    type: float
+    range: [0.0, 1.0]

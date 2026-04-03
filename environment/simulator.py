@@ -68,21 +68,28 @@ class SystemSimulator:
     def apply_action(self, action, target):
         print(f"\n[⚡ Action] {action} on {target}")
 
+        # 🔥 GRADUAL RECOVERY (KEY UPGRADE)
         if action == "restart_service":
-            self.nodes[target] = "healthy"
-            self.logs.append(f"[INFO] Restarted {target}")
+            if self.nodes[target] == "failed":
+                self.nodes[target] = "critical"
+            elif self.nodes[target] == "critical":
+                self.nodes[target] = "warning"
+            elif self.nodes[target] == "warning":
+                self.nodes[target] = "healthy"
+
+            self.logs.append(f"[INFO] Restart step applied to {target}")
 
         elif action == "scale_up":
             if self.nodes[target] == "critical":
                 self.nodes[target] = "warning"
             elif self.nodes[target] == "warning":
                 self.nodes[target] = "healthy"
+
             self.logs.append(f"[INFO] Scaled {target}")
 
         elif action == "do_nothing":
             self.logs.append("[INFO] No action taken")
 
-    # ✅ NEW FUNCTION (correct place for metrics reset)
     def reset_metrics_if_healthy(self):
         if all(state == "healthy" for state in self.nodes.values()):
             self.metrics["cpu"] = 20
@@ -115,7 +122,15 @@ if __name__ == "__main__":
     sim.propagate_failure()
     sim.show_state()
 
+    # Apply multiple steps to recover
     sim.apply_action("restart_service", "database")
     sim.propagate_failure()
-    sim.reset_metrics_if_healthy()   # ✅ IMPORTANT FIX
+
+    sim.apply_action("restart_service", "database")
+    sim.propagate_failure()
+
+    sim.apply_action("restart_service", "database")
+    sim.propagate_failure()
+
+    sim.reset_metrics_if_healthy()
     sim.show_state()

@@ -1,4 +1,5 @@
 ---
+
 title: Cascade Failure AI Environment
 emoji: 🚨
 colorFrom: red
@@ -6,49 +7,38 @@ colorTo: yellow
 sdk: docker
 app_file: app.py
 pinned: false
----
+-------------
 
 # 🚨 DevOps Cascade Failure AI Environment
 
->  Simulates real-world cascading failures in distributed systems and evaluates AI agents on incident response decisions.
+> 🚨 A benchmark environment for evaluating AI agents on real-world incident response in distributed systems with cascading failures.
 
 ## 🧠 Overview
 
-This project is a **real-world AI evaluation environment** that simulates cascading failures in distributed systems (frontend → API → database).
+This project simulates real-world cascading failures in distributed systems (e.g., frontend → API → database).
 
-An AI agent must:
+It is designed as a benchmark environment where AI agents must detect failures, diagnose root causes, and take corrective actions to recover the system efficiently.
 
-* Detect system degradation
-* Diagnose root cause
-* Take corrective action to prevent full system failure
+## 🚀 Why This Matters
 
----
+Modern production systems often fail due to cascade effects:
 
-## ⚡ Problem
+A small issue in one service spreads across dependencies and leads to system-wide outages.
 
-Modern systems (e.g., Instagram, WhatsApp) fail due to **cascade failures**:
+This environment models that exact behavior and enables evaluation of AI agents in production-like scenarios.
 
-> A small failure in one service spreads across dependencies → causing system-wide outages.
-
-This environment models that exact scenario.
-
----
-
-## 🎯 Objective
+## 🎯 Benchmark Objective
 
 Evaluate how well an AI agent can:
 
-* Identify system health
-* Understand failure propagation
-* Select optimal recovery actions
-
----
+* Understand system health
+* Interpret logs and metrics
+* Handle cascading failures
+* Make sequential recovery decisions
 
 ## 🏗️ System Architecture
 
-```
 Frontend → API → Database
-```
 
 Each node can be:
 
@@ -57,120 +47,94 @@ Each node can be:
 * 🔴 Critical
 * ❌ Failed
 
-Failures propagate across dependencies.
+Failures propagate through dependencies.
 
----
+## 🔥 Key Features
 
-## 🧪 Tasks
+* Multi-step cascade failure simulation
+* Dependency-aware failure propagation
+* Gradual recovery dynamics (non-instant repair)
+* Structured observation space (nodes, metrics, logs)
+* Deterministic and interpretable reward function
+* Supports evaluation of decision-making agents
 
-### 🟢 Easy Task
+## ⚠️ Why This Problem is Hard
 
-* Identify system severity from metrics
-
-### 🟡 Medium Task
-
-* Diagnose root cause using logs
-
-### 🔴 Hard Task
-
-* Choose correct recovery action
-
----
+* Failures propagate across dependencies
+* Partial observability using logs and metrics
+* Multiple valid actions with different outcomes
+* Requires multi-step planning, not single-step fixes
 
 ## ⚙️ Actions
 
-The agent can:
+The agent can perform:
 
-* `restart_service`
-* `scale_up`
-* `do_nothing`
-
----
+* restart_service
+* scale_up
+* do_nothing
 
 ## 🧮 Reward Function
 
-```
-reward = healthy_nodes / total_nodes
-```
+Reward reflects system health quality:
 
-* Full recovery → 1.0
-* Partial recovery → 0.x
+* Healthy → highest score
+* Warning / Critical → partial score
+* Failed → lowest score
+* Poor decisions are penalized
 
----
+This encourages gradual recovery and intelligent action selection.
 
 ## 🔁 Environment API
 
-```python
 env.reset()
 env.step(action)
 env.state()
-```
 
----
+## 📊 Sample Output
 
-## 📊 Example Output
+--- Step 1 ---
+Action: restart_service on database
+Reward: 0.4
 
-```json
-{
-  "nodes": {
-    "frontend": "warning",
-    "api": "critical",
-    "database": "failed"
-  },
-  "metrics": {
-    "cpu": 90,
-    "memory": 95,
-    "error_rate": 0.5
-  }
-}
-```
+--- Step 2 ---
+Action: scale_up on api
+Reward: 0.5
 
----
+--- Step 3 ---
+Action: scale_up on database
+Reward: 0.6
 
-## 📊 Visualization
+--- Step 4 ---
+Action: scale_up on frontend
+Reward: 0.73
 
-The system includes a simple visual interface showing real-time service states:
+--- Step 5 ---
+Action: scale_up on api
+Reward: 0.86
 
-* 🟢 Healthy
-* 🟡 Warning
-* 🔴 Critical
-* ⚫ Failed
+Final:
+Total Reward: 3.1
+Normalized Score: 0.62
 
-This helps visualize how failures propagate across services.
+## 📊 Baseline Performance
 
----
+A simple rule-based agent achieves:
 
-## 🚀 Why This Matters
-
-* Real-world DevOps scenario
-* Used daily by companies like Meta
-* Simulates real incident response workflows
-* No standard benchmark exists for cascade failure AI agents
-* Enables benchmarking of AI agents in production-like failure scenarios
----
-
-## 🏆 Highlights
-
-* Deterministic grading system
-* Multi-step reasoning tasks
-* Realistic system simulation
-* Fully deployable environment
-
----
+* Easy Task → 1.0
+* Medium Task → ~0.8
+* Hard Task → ~0.6
 
 ## ⚡ Run Locally
 
-```bash
 python inference.py
-```
-
----
 
 ## 🌍 Deployment
 
 Deployed on Hugging Face Spaces using Docker.
 
----
+## 🧠 Insight
+
+This environment models incident response as a sequential decision-making problem, bridging reinforcement learning with real-world DevOps systems.
 
 ## 👨‍💻 Author
 
