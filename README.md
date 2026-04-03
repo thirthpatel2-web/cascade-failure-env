@@ -10,6 +10,8 @@ pinned: false
 
 # 🚨 DevOps Cascade Failure AI Environment
 
+>  Simulates real-world cascading failures in distributed systems and evaluates AI agents on incident response decisions.
+
 ## 🧠 Overview
 
 This project is a **real-world AI evaluation environment** that simulates cascading failures in distributed systems (frontend → API → database).
