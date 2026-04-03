@@ -146,7 +146,7 @@ This helps visualize how failures propagate across services.
 * Used daily by companies like Meta
 * Simulates real incident response workflows
 * No standard benchmark exists for cascade failure AI agents
-
+* Enables benchmarking of AI agents in production-like failure scenarios
 ---
 
 ## 🏆 Highlights
