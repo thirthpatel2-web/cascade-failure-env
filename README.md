@@ -1,5 +1,5 @@
 ---
-title: Cascade Failure Env
+title: Cascade Failure AI Environment
 emoji: 🚨
 colorFrom: red
 colorTo: yellow
