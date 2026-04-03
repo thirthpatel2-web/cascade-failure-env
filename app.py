@@ -6,13 +6,13 @@ from environment.env import CascadeEnv
 app = FastAPI()
 
 
-# ✅ ROOT ENDPOINT (MANDATORY)
+# ROOT ENDPOINT (MANDATORY)
 @app.get("/")
 def root():
     return {"status": "running"}
 
 
-# ✅ RESET ENDPOINT (VERY IMPORTANT)
+# RESET ENDPOINT (VERY IMPORTANT)
 @app.get("/reset")
 def reset():
     env = CascadeEnv()
