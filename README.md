@@ -1,6 +1,13 @@
 ---
 title: Cascade Failure Env
+emoji: 🚨
+colorFrom: red
+colorTo: yellow
+sdk: docker
+app_file: app.py
+pinned: false
 ---
+
 # 🚨 DevOps Cascade Failure AI Environment
 
 ## 🧠 Overview
