@@ -1,0 +1,11 @@
+name: cascade-failure-env
+
+description: >
+  AI agent environment for preventing cascading failures in distributed systems
+
+tasks:
+  - easy
+  - medium
+  - hard
+
+entrypoint: environment.env:CascadeEnv
