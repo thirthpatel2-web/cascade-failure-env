@@ -5,12 +5,17 @@ description = "DevOps Cascade Failure OpenEnv Environment"
 authors = [
     { name="Thirth Patel" }
 ]
+
 dependencies = [
     "fastapi",
     "uvicorn",
     "pydantic",
-    "openai"
+    "openai",
+    "openenv>=0.2.0"
 ]
+
+[project.scripts]
+server = "server.app:app"
 
 [build-system]
 requires = ["setuptools", "wheel"]
