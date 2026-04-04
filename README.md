@@ -9,7 +9,7 @@ app_file: app.py
 pinned: false
 tags:
 
-* openenv
+  - openenv
 
 ---
 
