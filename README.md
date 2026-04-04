@@ -1,140 +1,322 @@
 ---
+
 title: Cascade Failure Env
-emoji: 🚀
-colorFrom: blue
-colorTo: green
+emoji: 🚨
+colorFrom: red
+colorTo: yellow
 sdk: docker
 app_file: app.py
 pinned: false
+tags:
+
+* openenv
+
 ---
 
-# 🚨 DevOps Cascade Failure AI Environment
+# 🚨 DevOps Cascade Failure Prevention Environment
 
-> 🚨 A benchmark environment for evaluating AI agents on real-world incident response in distributed systems with cascading failures.
+> A real-world OpenEnv benchmark for evaluating AI agents on **incident response in distributed systems** — simulating cascading failures across microservices.
+
+---
 
 ## 🧠 Overview
 
-This project simulates real-world cascading failures in distributed systems (e.g., frontend → API → database).
+Modern production systems fail due to **cascade effects**: one service slows down, overloads dependencies, and triggers system-wide outages.
 
-It is designed as a benchmark environment where AI agents must detect failures, diagnose root causes, and take corrective actions to recover the system efficiently.
+Companies like Meta, Google, and AWS lose **millions per minute** during such failures.
 
-## 🚀 Why This Matters
+This environment simulates that exact scenario.
 
-Modern production systems often fail due to cascade effects:
+👉 An AI agent must:
 
-A small issue in one service spreads across dependencies and leads to system-wide outages.
+* Monitor system state
+* Detect failure propagation
+* Take corrective actions (restart / scale / wait)
+* Stabilize the system within limited steps
 
-This environment models that exact behavior and enables evaluation of AI agents in production-like scenarios.
+---
 
-## 🎯 Benchmark Objective
+## ⚙️ Environment Description
 
-Evaluate how well an AI agent can:
+We model a **3-node microservice dependency chain**:
 
-* Understand system health
-* Interpret logs and metrics
-* Handle cascading failures
-* Make sequential recovery decisions
-
-## 🏗️ System Architecture
-
+```
 Frontend → API → Database
+```
 
-Each node can be:
+Each node transitions through:
 
-* 🟢 Healthy
-* 🟡 Warning
-* 🔴 Critical
-* ❌ Failed
+| State       | Meaning            |
+| ----------- | ------------------ |
+| 🟢 healthy  | Normal operation   |
+| 🟡 warning  | Degraded           |
+| 🔴 critical | Severe degradation |
+| ❌ failed    | Fully down         |
 
-Failures propagate through dependencies.
+---
 
-## 🔥 Key Features
+### 🔁 Failure Propagation
 
-* Multi-step cascade failure simulation
-* Dependency-aware failure propagation
-* Gradual recovery dynamics (non-instant repair)
-* Structured observation space (nodes, metrics, logs)
-* Deterministic and interpretable reward function
-* Supports evaluation of decision-making agents
+* Database failure → API becomes critical → Frontend becomes warning
+* Recovery propagates back upstream gradually
 
-## ⚠️ Why This Problem is Hard
+👉 This creates a **realistic cascading failure system**
 
-* Failures propagate across dependencies
-* Partial observability using logs and metrics
-* Multiple valid actions with different outcomes
-* Requires multi-step planning, not single-step fixes
+---
 
-## ⚙️ Actions
+## 📦 Observation Space
 
-The agent can perform:
+```python
+class Observation(BaseModel):
+    nodes:   Dict[str, str]
+    metrics: Dict[str, float]
+    logs:    List[str]
+```
 
-* restart_service
-* scale_up
-* do_nothing
+### Example:
 
-## 🧮 Reward Function
+```json
+{
+  "nodes": {"frontend": "warning", "api": "critical", "database": "failed"},
+  "metrics": {"cpu": 90.0, "memory": 95.0, "error_rate": 0.5},
+  "logs": ["[ERROR] database failed", "[WARN] api latency spike"]
+}
+```
 
-Reward reflects system health quality:
+---
 
-* Healthy → highest score
-* Warning / Critical → partial score
-* Failed → lowest score
-* Poor decisions are penalized
+## 🎮 Action Space
 
-This encourages gradual recovery and intelligent action selection.
+```python
+class Action(BaseModel):
+    action: str
+    target: str
+```
 
-## 🔁 Environment API
+| Action          | Effect                                                   |
+| --------------- | -------------------------------------------------------- |
+| restart_service | Gradual recovery (failed → critical → warning → healthy) |
+| scale_up        | Improves state by one level                              |
+| do_nothing      | No action (penalized if system unstable)                 |
 
-env.reset()
-env.step(action)
-env.state()
+---
 
-## 📊 Sample Output
+## 🎯 Reward Function
 
---- Step 1 ---
-Action: restart_service on database
-Reward: 0.4
+```python
+score_map = {
+    "healthy": 1.0,
+    "warning": 0.6,
+    "critical": 0.3,
+    "failed": 0.0
+}
 
---- Step 2 ---
-Action: scale_up on api
-Reward: 0.5
+reward = average(node_scores) - penalty
+```
 
---- Step 3 ---
-Action: scale_up on database
-Reward: 0.6
+### Key Properties:
 
---- Step 4 ---
-Action: scale_up on frontend
-Reward: 0.73
+* ✅ Dense (step-wise signal, not binary)
+* ✅ Encourages gradual recovery
+* ❌ Penalizes bad decisions (`do_nothing`)
 
---- Step 5 ---
-Action: scale_up on api
-Reward: 0.86
+---
 
-Final:
-Total Reward: 3.1
-Normalized Score: 0.62
+## 🧪 Tasks
+
+### 🟢 Easy — Single Failure Recovery
+
+* Recover system from one failed node
+* Strategy: restart → scale remaining
+* **Expected score: 1.0**
+
+---
+
+### 🟡 Medium — Partial Degradation
+
+* Mixed states across system
+* Requires prioritization
+* **Expected score: 0.2 – 0.5**
+
+---
+
+### 🔴 Hard — Full Cascade Recovery
+
+* Multi-step failure propagation
+* Requires sequential reasoning
+* **Expected score: 0.4 – 0.7**
+
+---
 
 ## 📊 Baseline Performance
 
-A simple rule-based agent achieves:
+| Task   | Score   | Behavior                 |
+| ------ | ------- | ------------------------ |
+| Easy   | 1.0     | Full recovery            |
+| Medium | 0.2–0.5 | Partial recovery         |
+| Hard   | 0.4–0.7 | Multi-step stabilization |
 
-* Easy Task → 1.0
-* Medium Task → ~0.8
-* Hard Task → ~0.6
+---
 
-## ⚡ Run Locally
+## 🧾 Sample Output
 
+```
+[START] task=cascade_failure env=devops model=gpt-4o-mini
+[STEP] step=1 action=restart_service:database reward=0.40 done=false
+[STEP] step=2 action=scale_up:api reward=0.50 done=false
+[STEP] step=3 action=scale_up:database reward=0.60 done=false
+[STEP] step=4 action=scale_up:frontend reward=0.73 done=false
+[STEP] step=5 action=scale_up:api reward=0.87 done=true
+[END] success=true steps=5 score=0.62 rewards=[0.4,0.5,0.6,0.73,0.87]
+```
+
+---
+
+## 🔌 Environment API
+
+```python
+from environment.env import CascadeEnv
+
+env = CascadeEnv()
+
+obs = env.reset()
+obs, reward, done, _ = env.step("restart_service", "database")
+state = env.state()
+```
+
+---
+
+## 🛠️ Setup & Usage
+
+### Requirements
+
+* Python 3.10+
+
+---
+
+### Clone Repo
+
+```bash
+git clone https://github.com/thirthpatel2-web/cascade-failure-env
+cd cascade-failure-env
+```
+
+---
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+### Set Environment Variables
+
+#### Windows (PowerShell)
+
+```powershell
+$env:API_BASE_URL="https://api.openai.com/v1"
+$env:MODEL_NAME="gpt-4o-mini"
+$env:OPENAI_API_KEY="your_key_here"
+$env:HF_TOKEN="dummy"
+```
+
+#### Mac/Linux
+
+```bash
+export API_BASE_URL="https://api.openai.com/v1"
+export MODEL_NAME="gpt-4o-mini"
+export OPENAI_API_KEY="your_key_here"
+export HF_TOKEN="dummy"
+```
+
+---
+
+### ▶️ Run Baseline
+
+```bash
 python inference.py
+```
 
-## 🌍 Deployment
+---
 
-Deployed on Hugging Face Spaces using Docker.
+### 🧪 Run Tasks
 
-## 🧠 Insight
+```bash
+python -c "from tasks.task_easy import run_task; print(run_task())"
+python -c "from tasks.task_medium import run_task; print(run_task())"
+python -c "from tasks.task_hard import run_task; print(run_task())"
+```
 
-This environment models incident response as a sequential decision-making problem, bridging reinforcement learning with real-world DevOps systems.
+---
 
-## 👨‍💻 Author
+### 🌐 Run API
 
-Built for AI Hackathon — Cascade Failure Simulation Environment
+```bash
+uvicorn app:app --host 0.0.0.0 --port 7860
+```
+
+---
+
+### 🐳 Docker
+
+```bash
+docker build -t cascade-failure-env .
+docker run -p 7860:7860 cascade-failure-env
+```
+
+---
+
+## 🚀 Deployment
+
+Hosted on Hugging Face Spaces:
+
+* `/` → `{"status": "running"}`
+* `/reset` → returns system observation
+
+---
+
+## 📂 Project Structure
+
+```
+cascade-failure-env/
+├── environment/
+│   ├── env.py
+│   └── simulator.py
+├── tasks/
+│   ├── task_easy.py
+│   ├── task_medium.py
+│   └── task_hard.py
+├── inference.py
+├── app.py
+├── openenv.yaml
+├── Dockerfile
+└── README.md
+```
+
+---
+
+## 💡 Why This Matters
+
+There is currently **no standard OpenEnv benchmark** for DevOps incident response.
+
+This environment:
+
+* Simulates **real production failures**
+* Enables **agent evaluation in infrastructure domains**
+* Bridges **AI research with real-world systems**
+
+👉 Direct applications:
+
+* Autonomous incident response agents
+* Reliability engineering automation
+* AI-based system monitoring
+
+---
+
+## 🏁 Final Statement
+
+> This project introduces a realistic benchmark for **AI-driven system recovery**, modeling how failures propagate and how intelligent agents can intervene to prevent large-scale outages.
+
+---

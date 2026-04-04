@@ -1,10 +1,3 @@
-# tasks/task_easy.py
-"""
-Easy task: Agent must fully recover the system from any single-node failure.
-Strategy: keep restarting the failing node + scaling degraded ones until healthy.
-Expected score: 1.0 (reliable)
-"""
-
 from environment.env import CascadeEnv
 
 
@@ -12,8 +5,6 @@ def run_task() -> float:
     env = CascadeEnv()
     obs = env.reset()
 
-    # Allow enough steps to handle ANY randomly chosen failure node
-    # (database failure needs multiple gradual steps to recover)
     for _ in range(10):
         action, target = None, None
 
