@@ -1,0 +1,17 @@
+[project]
+name = "cascade-failure-env"
+version = "0.1.0"
+description = "DevOps Cascade Failure OpenEnv Environment"
+authors = [
+    { name="Thirth Patel" }
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openai"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
