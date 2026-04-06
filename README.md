@@ -281,6 +281,9 @@ Hosted on Hugging Face Spaces:
 
 ```
 cascade-failure-env/
+├── app.py                  # HF Space entrypoint
+├── server/
+│   └── app.py              # OpenEnv validator entrypoint
 ├── environment/
 │   ├── env.py
 │   └── simulator.py
@@ -289,12 +292,15 @@ cascade-failure-env/
 │   ├── task_medium.py
 │   └── task_hard.py
 ├── inference.py
-├── app.py
 ├── openenv.yaml
+├── pyproject.toml          # OpenEnv packaging
+├── uv.lock                 # dependency lock file
 ├── Dockerfile
+├── requirements.txt
 └── README.md
 ```
 
+> Note: `app.py` is used for Hugging Face deployment, while `server/app.py` is required for OpenEnv multi-mode validation.
 ---
 
 ## 💡 Why This Matters
