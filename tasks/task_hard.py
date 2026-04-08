@@ -1,43 +1,29 @@
+# tasks/task_hard.py
 from environment.env import CascadeEnv
 
-def run_task():
-    env = CascadeEnv()
+PRIORITY = ["api_gateway","db_primary","payment_svc","auth_service",
+            "cache_layer","user_service","order_service","db_replica",
+            "search_svc","inventory_svc","message_queue","notification"]
+
+def run_task() -> float:
+    env = CascadeEnv(task_level="hard", seed=None)
     obs = env.reset()
+    total, steps = 0.0, 0
 
-    total = 0.0
+    for _ in range(25):
+        action, target = _choose(obs)
+        if action is None: break
+        obs, r, done, _ = env.step(action, target)
+        total += r.value; steps += 1
+        if done: break
 
-    for _ in range(5):
-        action, target = None, None
+    return float(round(min(max(total / max(steps, 1), 0.0), 1.0), 4))
 
-        # Priority 1: failed
-        for node, state in obs.nodes.items():
-            if state == "failed":
-                action, target = "restart_service", node
-                break
-
-        # Priority 2: critical
-        if action is None:
-            for node, state in obs.nodes.items():
-                if state == "critical":
-                    action, target = "scale_up", node
-                    break
-
-        # Priority 3: warning
-        if action is None:
-            for node, state in obs.nodes.items():
-                if state == "warning":
-                    action, target = "scale_up", node
-                    break
-
-        # fallback
-        if action is None:
-            action, target = "do_nothing", "database"
-
-        obs, reward, done, _ = env.step(action, target)
-        total += reward.value
-
-        if done:
-            break
-
-    score = total / 5.0
-    return float(min(max(score, 0.0), 1.0))
+def _choose(obs):
+    for n in PRIORITY:
+        if obs.nodes.get(n) == "failed":   return "restart_service", n
+    for n in PRIORITY:
+        if obs.nodes.get(n) == "critical": return "scale_up", n
+    for n in PRIORITY:
+        if obs.nodes.get(n) == "warning":  return "scale_up", n
+    return None, None

@@ -1,116 +1,70 @@
 import os
-from typing import List, Optional
+import sys
 
-from openai import OpenAI
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN", "dummy")
 
-from environment.env import CascadeEnv
+MAX_STEPS = 10
+SUCCESS_SCORE_THRESHOLD = 0.4
 
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or "dummy"
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME   = os.getenv("MODEL_NAME")   or "meta-llama/Llama-3.1-8B-Instruct"
-
-TASK_NAME  = "cascade_failure_prevention"
-BENCHMARK  = "devops_cascade"
-MAX_STEPS  = 10
-SUCCESS_SCORE_THRESHOLD = 0.4 
-
-
-def log_start(task: str, env: str, model: str) -> None:
+def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
+def log_step(step, action, reward, done, error=None):
+    error_str = error if error else "null"
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error_str}", flush=True)
 
-def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
-    error_val = error if error else "null"
-    done_val  = str(done).lower()
-    print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
-        flush=True,
-    )
-
-
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+def log_end(success, steps, score, rewards):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
-        flush=True,
-    )
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
+def main():
+    from environment.env import CascadeEnv
 
-def choose_action(observation) -> tuple:
-    """
-    Rule-based agent. Prioritises failed → critical → warning nodes.
-    Returns (action_str, target_node) tuple.
-    """
-    nodes = observation.nodes
+    log_start("cascade_failure_prevention", "devops_cascade", MODEL_NAME)
 
-    for node, state in nodes.items():
-        if state == "failed":
-            return "restart_service", node
+    env = CascadeEnv()
+    obs = env.reset()
 
-    for node, state in nodes.items():
-        if state == "critical":
-            return "scale_up", node
+    rewards = []
+    done = False
+    step = 0
 
-    for node, state in nodes.items():
-        if state == "warning":
-            return "scale_up", node
+    # Find the first failed/critical node
+    def pick_action(obs):
+        for node, status in obs.nodes.items():
+            if status == "failed":
+                return "restart_service", node
+        for node, status in obs.nodes.items():
+            if status == "critical":
+                return "scale_up", node
+        for node, status in obs.nodes.items():
+            if status == "warning":
+                return "scale_up", node
+        return "do_nothing", list(obs.nodes.keys())[0]
 
-    return "do_nothing", "database"
+    while not done and step < MAX_STEPS:
+        step += 1
+        action_type, target = pick_action(obs)
+        action_str = f"{action_type}({target})"
 
+        try:
+           obs, reward_obj, done, info = env.step(action_type, target)
+           reward = reward_obj.value
+        except Exception as e:
+            log_step(step, action_str, 0.0, True, str(e))
+            log_end(False, step, 0.0, rewards)
+            return
 
-def format_action(action: str, target: str) -> str:
-    """Format action as a readable string for the [STEP] log."""
-    return f"{action}({target})"
+        rewards.append(reward)
+        log_step(step, action_str, reward, done)
 
+    steps_taken = max(step, 1)
+    score = min(max(sum(rewards) / steps_taken, 0.0), 1.0)
+    success = score >= SUCCESS_SCORE_THRESHOLD
 
-def main() -> None:
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)  
-
-    rewards:     List[float] = []
-    steps_taken: int         = 0
-    score:       float       = 0.0
-    success:     bool        = False
-    obs                      = None
-
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
-
-    try:
-        env = CascadeEnv()
-        obs = env.reset()
-
-        for step in range(1, MAX_STEPS + 1):
-            action, target = choose_action(obs)
-            action_str     = format_action(action, target)
-
-            obs, reward_obj, done, info = env.step(action, target)
-
-            reward = reward_obj.value
-            error  = None                  
-
-            rewards.append(reward)
-            steps_taken = step
-
-            log_step(
-                step   = step,
-                action = action_str,
-                reward = reward,
-                done   = done,
-                error  = error,
-            )
-
-            if done:
-                break
-
-        max_possible = steps_taken * 1.0
-        score = min(max(sum(rewards) / max_possible, 0.0), 1.0)
-        success = score >= SUCCESS_SCORE_THRESHOLD
-
-    except Exception as exc:
-        print(f"[DEBUG] Episode error: {exc}", flush=True)
-
-    finally:
-        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
-
+    log_end(success, step, score, rewards)
 
 if __name__ == "__main__":
     main()
