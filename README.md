@@ -1,5 +1,4 @@
 ---
-
 title: Cascade Failure Env
 emoji: 🚨
 colorFrom: red
@@ -8,9 +7,7 @@ sdk: docker
 app_file: app.py
 pinned: false
 tags:
-
-* openenv
-
+  - openenv
 ---
 
 # 🚨 DevOps Cascade Failure Prevention Environment
