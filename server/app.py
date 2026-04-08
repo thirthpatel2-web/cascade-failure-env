@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,6 +78,10 @@ def health():
     return {"status": "ok", "nodes": list(NODES.keys())}
 
 
-if __name__ == "__main__":
+def main():
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=7860)
+
+
+if __name__ == "__main__":
+    main()
