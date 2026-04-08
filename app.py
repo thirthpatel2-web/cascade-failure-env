@@ -1,6 +1,5 @@
-# app.py  ← ROOT ONLY. Delete server/app.py entirely.
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -24,11 +23,6 @@ app.add_middleware(
 _env: Optional[CascadeEnv] = None
 
 
-class ResetRequest(BaseModel):
-    task_level: str = "easy"
-    seed: Optional[int] = None          # None = random failure each time
-
-
 class StepRequest(BaseModel):
     action: str
     target: str = "api_gateway"
@@ -40,20 +34,17 @@ def root():
 
 
 @app.post("/reset")
-def reset_post(req: ResetRequest):
+def reset_post():
     global _env
-    if req.task_level not in ("easy", "medium", "hard"):
-        return JSONResponse({"error": "task_level must be easy | medium | hard"}, status_code=400)
-    _env = CascadeEnv(task_level=req.task_level, seed=req.seed)
+    _env = CascadeEnv(task_level="easy", seed=None)
     obs = _env.reset()
     return JSONResponse(obs.model_dump())
 
 
 @app.get("/reset")
 def reset_get():
-    """GET /reset — used by validator ping. Random failure each call."""
     global _env
-    _env = CascadeEnv(task_level="easy", seed=None)  # None = random
+    _env = CascadeEnv(task_level="easy", seed=None)
     obs = _env.reset()
     return JSONResponse(obs.model_dump())
 
