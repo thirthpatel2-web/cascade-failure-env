@@ -11,17 +11,17 @@ environment:
 tasks:
   - name: easy
     description: Single node failure recovery within 10 steps
-    grader: tasks.task_easy.run_task
+    grader: graders.run_easy
     difficulty: easy
 
   - name: medium
     description: Multi-node degraded state requiring prioritized recovery
-    grader: tasks.task_medium.run_task
+    grader: graders.run_medium
     difficulty: medium
 
   - name: hard
     description: Full cascade failure requiring multi-step sequential recovery
-    grader: tasks.task_hard.run_task
+    grader: graders.run_hard
     difficulty: hard
 
 observation_space:
@@ -29,10 +29,10 @@ observation_space:
   fields:
     nodes:
       type: dict
-      description: Map of service name to health status (healthy/warning/critical/failed)
+      description: Map of service name to health status
     metrics:
       type: dict
-      description: System metrics including cpu, memory, error_rate
+      description: System metrics cpu, memory, error_rate
     logs:
       type: list
       description: Recent system log entries
@@ -50,14 +50,4 @@ action_space:
 reward:
   type: float
   range: [0.0, 1.0]
-  description: >
-    Dense reward based on mean node health across all 12 services.
-    Healthy=1.0, Warning=0.6, Critical=0.3, Failed=0.0.
-    do_nothing during active failure penalized by -0.2.
-
-metadata:
-  domain: devops
-  tags: [incident-response, cascade-failure, microservices, real-world]
-  runtime:
-    cpu: 2
-    memory_gb: 8
+  description: Dense reward based on mean node health across all 12 services.
