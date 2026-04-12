@@ -1,53 +1,90 @@
 name: cascade_failure_prevention
-version: "1.0"
-description: >
-  An AI agent monitors a 12-node distributed microservice system and must
-  detect, diagnose, and recover cascading failures before the system collapses.
 
-environment:
-  module: environment.env
-  class: CascadeEnv
+version: "1.0.0"
+
+description: >
+  Real-world DevOps incident response environment. An AI agent monitors
+  a 12-node distributed microservice system and must detect, diagnose,
+  and recover cascading failures before the system collapses.
+
+author: "CodeX Team"
+
+tags:
+  - openenv
+  - devops
+  - incident-response
+  - cascade-failure
+  - real-world
 
 tasks:
-  - name: easy
-    description: Single node failure recovery within 10 steps
-    grader: graders.run_easy
+  - id: easy
+    description: "Recover a single randomly failed node within 10 steps"
     difficulty: easy
+    max_attempts: 10
+    scoring: "0.0-1.0 based on mean node health across recovery steps"
 
-  - name: medium
-    description: Multi-node degraded state requiring prioritized recovery
-    grader: graders.run_medium
+  - id: medium
+    description: "Handle multi-node degraded state with prioritized recovery"
     difficulty: medium
+    max_attempts: 15
+    scoring: "0.0-1.0 based on mean node health across recovery steps"
 
-  - name: hard
-    description: Full cascade failure requiring multi-step sequential recovery
-    grader: graders.run_hard
+  - id: hard
+    description: "Full cascade failure requiring multi-step sequential recovery"
     difficulty: hard
+    max_attempts: 20
+    scoring: "0.0-1.0 based on mean node health across recovery steps"
 
 observation_space:
-  type: dict
-  fields:
-    nodes:
-      type: dict
-      description: Map of service name to health status
-    metrics:
-      type: dict
-      description: System metrics cpu, memory, error_rate
-    logs:
-      type: list
-      description: Recent system log entries
+  nodes: "dict — service name to health status (healthy/warning/critical/failed)"
+  metrics: "dict — cpu, memory, error_rate"
+  logs: "list — recent system log lines"
 
 action_space:
-  type: dict
-  fields:
-    action:
-      type: string
-      values: [restart_service, scale_up, do_nothing]
-    target:
-      type: string
-      description: Name of the service node to act on
+  action: "string — restart_service | scale_up | do_nothing"
+  target: "string — name of the service node to act on"
 
 reward:
-  type: float
+  type: continuous
   range: [0.0, 1.0]
-  description: Dense reward based on mean node health across all 12 services.
+  shaping:
+    - "healthy node = 1.0"
+    - "warning node = 0.6"
+    - "critical node = 0.3"
+    - "failed node = 0.0"
+    - "-0.2 penalty for do_nothing during active failure"
+
+endpoints:
+  - path: /reset
+    method: POST
+    description: Start a new episode
+
+  - path: /step
+    method: POST
+    description: Take an action in the environment
+
+  - path: /state
+    method: GET
+    description: Get current episode state
+
+  - path: /tasks
+    method: GET
+    description: List all 3 tasks
+
+  - path: /grader
+    method: GET
+    description: Grade a specific task by id
+
+  - path: /baseline
+    method: GET
+    description: Run baseline agent on all 3 tasks and return scores
+
+  - path: /health
+    method: GET
+    description: Health check
+
+runtime:
+  framework: FastAPI
+  python: "3.10"
+  docker: true
+  hf_spaces: true
