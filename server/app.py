@@ -1,20 +1,19 @@
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+# server/app.py  — required entrypoint for OpenEnv validator
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from typing import Optional
+import os
+import sys
+
+# Ensure root is on path so environment/ and tasks/ can be imported
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from environment.env import CascadeEnv
-from environment.simulator import NODES
 
 app = FastAPI(
     title="Cascade Failure Prevention Environment",
-    description="OpenEnv-compliant 12-node microservice cascade failure simulation",
-    version="2.0.0",
+    version="1.0.0",
 )
 
 app.add_middleware(
@@ -27,26 +26,14 @@ app.add_middleware(
 _env: Optional[CascadeEnv] = None
 
 
-class StepRequest(BaseModel):
-    action: str
-    target: str = "api_gateway"
-
-
 @app.get("/")
 def root():
-    return {"status": "running", "nodes": len(NODES), "version": "2.0.0"}
-
-
-@app.post("/reset")
-def reset_post():
-    global _env
-    _env = CascadeEnv(task_level="easy", seed=None)
-    obs = _env.reset()
-    return JSONResponse(obs.model_dump())
+    return {"status": "running", "env_id": "cascade-failure-env", "version": "1.0.0"}
 
 
 @app.get("/reset")
-def reset_get():
+@app.post("/reset")
+def reset():
     global _env
     _env = CascadeEnv(task_level="easy", seed=None)
     obs = _env.reset()
@@ -54,15 +41,15 @@ def reset_get():
 
 
 @app.post("/step")
-def step(req: StepRequest):
+def step(action: str, target: str = "api_gateway"):
     if _env is None:
         return JSONResponse({"error": "Call /reset first"}, status_code=400)
-    obs, reward, done, info = _env.step(req.action, req.target)
+    obs, reward, done, info = _env.step(action, target)
     return JSONResponse({
         "observation": obs.model_dump(),
-        "reward":      reward.model_dump(),
-        "done":        done,
-        "info":        info,
+        "reward": reward.model_dump(),
+        "done": done,
+        "info": info,
     })
 
 
@@ -73,14 +60,20 @@ def state():
     return JSONResponse(_env.state())
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "nodes": list(NODES.keys())}
+@app.get("/tasks")
+def tasks():
+    return {
+        "tasks": [
+            {"id": "easy",   "difficulty": "easy",   "max_steps": 15},
+            {"id": "medium", "difficulty": "medium",  "max_steps": 20},
+            {"id": "hard",   "difficulty": "hard",    "max_steps": 25},
+        ]
+    }
 
 
 def main():
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
 
 
 if __name__ == "__main__":

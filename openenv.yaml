@@ -1,90 +1,75 @@
-name: cascade_failure_prevention
-
+env_id: cascade-failure-env
 version: "1.0.0"
-
 description: >
-  Real-world DevOps incident response environment. An AI agent monitors
-  a 12-node distributed microservice system and must detect, diagnose,
-  and recover cascading failures before the system collapses.
-
-author: "CodeX Team"
-
-tags:
-  - openenv
-  - devops
-  - incident-response
-  - cascade-failure
-  - real-world
+  A real-world DevOps environment where an AI agent monitors 12 interconnected
+  microservices and must prevent cascade failures through intelligent intervention.
 
 tasks:
   - id: easy
-    description: "Recover a single randomly failed node within 10 steps"
     difficulty: easy
-    max_attempts: 10
-    scoring: "0.0-1.0 based on mean node health across recovery steps"
+    max_steps: 15
+    description: "Single node failure recovery — agent must stabilize the system"
+    grader:
+      type: llm
+      prompt_template: |
+        You are evaluating an AI agent's performance on a DevOps cascade failure recovery task.
+        The agent was given a system where one microservice failed and needed to recover it.
+        
+        Episode trajectory:
+        {trajectory}
+        
+        Final system state:
+        {final_state}
+        
+        Score the agent from 0.0 to 1.0 based on:
+        - Did the agent correctly identify the failed service? (0.3 points)
+        - Did the agent take appropriate recovery actions? (0.4 points)
+        - Was the system fully recovered by the end? (0.3 points)
+        
+        Respond with only a number between 0.0 and 1.0.
 
   - id: medium
-    description: "Handle multi-node degraded state with prioritized recovery"
     difficulty: medium
-    max_attempts: 15
-    scoring: "0.0-1.0 based on mean node health across recovery steps"
+    max_steps: 20
+    description: "Multi-node degraded state — agent must prioritise and recover multiple failures"
+    grader:
+      type: llm
+      prompt_template: |
+        You are evaluating an AI agent's performance on a multi-node cascade failure recovery task.
+        The agent was given a system with 2 failed services and cascading degradation.
+        
+        Episode trajectory:
+        {trajectory}
+        
+        Final system state:
+        {final_state}
+        
+        Score the agent from 0.0 to 1.0 based on:
+        - Did the agent correctly prioritise the most critical failures? (0.4 points)
+        - Did the agent use appropriate actions (restart vs scale_up)? (0.3 points)
+        - How much of the system was recovered? (0.3 points)
+        
+        Respond with only a number between 0.0 and 1.0.
 
   - id: hard
-    description: "Full cascade failure requiring multi-step sequential recovery"
     difficulty: hard
-    max_attempts: 20
-    scoring: "0.0-1.0 based on mean node health across recovery steps"
-
-observation_space:
-  nodes: "dict — service name to health status (healthy/warning/critical/failed)"
-  metrics: "dict — cpu, memory, error_rate"
-  logs: "list — recent system log lines"
-
-action_space:
-  action: "string — restart_service | scale_up | do_nothing"
-  target: "string — name of the service node to act on"
-
-reward:
-  type: continuous
-  range: [0.0, 1.0]
-  shaping:
-    - "healthy node = 1.0"
-    - "warning node = 0.6"
-    - "critical node = 0.3"
-    - "failed node = 0.0"
-    - "-0.2 penalty for do_nothing during active failure"
-
-endpoints:
-  - path: /reset
-    method: POST
-    description: Start a new episode
-
-  - path: /step
-    method: POST
-    description: Take an action in the environment
-
-  - path: /state
-    method: GET
-    description: Get current episode state
-
-  - path: /tasks
-    method: GET
-    description: List all 3 tasks
-
-  - path: /grader
-    method: GET
-    description: Grade a specific task by id
-
-  - path: /baseline
-    method: GET
-    description: Run baseline agent on all 3 tasks and return scores
-
-  - path: /health
-    method: GET
-    description: Health check
-
-runtime:
-  framework: FastAPI
-  python: "3.10"
-  docker: true
-  hf_spaces: true
+    max_steps: 25
+    description: "Full cascade failure — agent must recover 3 simultaneous failures with dependencies"
+    grader:
+      type: llm
+      prompt_template: |
+        You are evaluating an AI agent's performance on a full cascade failure recovery task.
+        The agent was given a system with 3 failed services causing widespread cascade degradation.
+        
+        Episode trajectory:
+        {trajectory}
+        
+        Final system state:
+        {final_state}
+        
+        Score the agent from 0.0 to 1.0 based on:
+        - Did the agent understand the dependency chain? (0.3 points)
+        - Did the agent recover failures in correct order (upstream first)? (0.4 points)
+        - What fraction of the 12 services were healthy at the end? (0.3 points)
+        
+        Respond with only a number between 0.0 and 1.0.

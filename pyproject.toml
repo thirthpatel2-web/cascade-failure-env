@@ -1,22 +1,18 @@
 [project]
 name = "cascade-failure-env"
 version = "0.1.0"
-description = "DevOps Cascade Failure OpenEnv Environment"
-authors = [
-    { name="Thirth Patel" }
-]
-
+requires-python = ">=3.10"
 dependencies = [
     "fastapi",
     "uvicorn",
-    "pydantic",
     "openai",
-    "openenv>=0.1.13"
+    "pydantic",
+    "requests",
 ]
 
 [project.scripts]
-server = "server.app:main"
+openenv-server = "server.app:main"
 
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
