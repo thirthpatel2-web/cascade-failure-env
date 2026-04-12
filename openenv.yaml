@@ -1,82 +1,63 @@
-name: cascade-failure-env
+name: cascade_failure_prevention
+version: "1.0"
 description: >
-  A real-world DevOps environment where an AI agent monitors interconnected
-  microservices and must prevent cascade failures through intelligent intervention.
-  Models genuine Site Reliability Engineering incident response.
+  An AI agent monitors a 12-node distributed microservice system and must
+  detect, diagnose, and recover cascading failures before the system collapses.
 
-version: "1.0.0"
-tags:
-  - openenv
-  - devops
-  - sre
-  - cascade-failure
-
-benchmark: devops_cascade
+environment:
+  module: environment.env
+  class: CascadeEnv
 
 tasks:
   - name: easy
-    description: "Recover system from a single random node failure. Agent has 15 steps."
+    description: Single node failure recovery within 10 steps
     grader: tasks.task_easy.run_task
-    expected_score_range: [0.0, 1.0]
+    difficulty: easy
 
   - name: medium
-    description: "Handle partial degradation across multiple nodes. Agent has 20 steps."
+    description: Multi-node degraded state requiring prioritized recovery
     grader: tasks.task_medium.run_task
-    expected_score_range: [0.0, 1.0]
+    difficulty: medium
 
   - name: hard
-    description: "Full cascade recovery requiring multi-step planning. Agent has 25 steps."
+    description: Full cascade failure requiring multi-step sequential recovery
     grader: tasks.task_hard.run_task
-    expected_score_range: [0.0, 1.0]
+    difficulty: hard
 
-environment:
-  class: CascadeEnv
-  module: environment.env
-  entrypoint: app.py
-
-  observation_space:
+observation_space:
+  type: dict
+  fields:
     nodes:
       type: dict
-      description: "Map of service name to status (healthy|warning|critical|failed)"
+      description: Map of service name to health status (healthy/warning/critical/failed)
     metrics:
       type: dict
-      description: "System metrics: cpu, memory, error_rate"
+      description: System metrics including cpu, memory, error_rate
     logs:
       type: list
-      description: "Recent system log lines"
-    failed_nodes:
-      type: list
-      description: "List of currently failed nodes"
+      description: Recent system log entries
 
-  action_space:
-    type: function_call
-    actions:
-      - name: restart_service
-        description: "Restart a specific node (gradual recovery over steps)"
-        args: [target_node]
-      - name: scale_up
-        description: "Scale up a node to reduce severity one level"
-        args: [target_node]
-      - name: do_nothing
-        description: "No operation"
-        args: []
+action_space:
+  type: dict
+  fields:
+    action:
+      type: string
+      values: [restart_service, scale_up, do_nothing]
+    target:
+      type: string
+      description: Name of the service node to act on
 
-  reward:
-    type: float
-    range: [0.0, 1.0]
-    dense: true
-    description: >
-      Weighted average of node health scores. Penalizes do_nothing during failures.
+reward:
+  type: float
+  range: [0.0, 1.0]
+  description: >
+    Dense reward based on mean node health across all 12 services.
+    Healthy=1.0, Warning=0.6, Critical=0.3, Failed=0.0.
+    do_nothing during active failure penalized by -0.2.
 
-baseline:
-  script: inference.py
-  env_vars:
-    - API_BASE_URL
-    - MODEL_NAME
-    - API_KEY
-  expected_runtime_minutes: 5
-
-infrastructure:
-  min_vcpu: 2
-  min_memory_gb: 4
-  port: 7860
+metadata:
+  domain: devops
+  tags: [incident-response, cascade-failure, microservices, real-world]
+  runtime:
+    cpu: 2
+    memory_gb: 8

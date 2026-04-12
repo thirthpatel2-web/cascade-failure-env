@@ -1,48 +1,81 @@
-# tasks/task_hard.py
 """
-Hard task: Full cascade recovery with 3 simultaneous failures.
-Grader: returns float in [0.0, 1.0]
-Score = average reward over episode steps
+Hard Task: Full cascade failure requiring multi-step sequential recovery.
+Expected score: ~0.4 - 0.7
 """
+
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from environment.env import CascadeEnv
 
-PRIORITY = [
-    "api_gateway", "db_primary", "payment_svc", "auth_service",
-    "cache_layer", "user_service", "order_service", "db_replica",
-    "search_svc", "inventory_svc", "message_queue", "notification",
-]
+
+def _get_reward_float(reward) -> float:
+    if isinstance(reward, (float, int)):
+        return float(reward)
+    for attr in ("score", "value", "reward", "amount"):
+        if hasattr(reward, attr):
+            return float(getattr(reward, attr))
+    return float(reward)
 
 
 def run_task() -> float:
-    env = CascadeEnv(task_level="hard", seed=None)
+    env = CascadeEnv(seed=None)
     obs = env.reset()
 
-    total_reward = 0.0
-    steps = 0
+    # Let cascade spread more for hard difficulty
+    for _ in range(6):
+        target = list(obs.nodes.keys())[0]
+        obs, _, done, _ = env.step("do_nothing", target)
+        if done:
+            obs = env.reset()
 
-    for _ in range(25):
-        action, target = _choose_action(obs)
-        if action is None:
-            break
-        obs, reward, done, _ = env.step(action, target)
-        total_reward += reward.value
-        steps += 1
+    MAX_STEPS = 20
+    total_reward = 0.0
+    steps_taken = 0
+    restarted = set()
+
+    for _ in range(MAX_STEPS):
+        nodes = obs.nodes
+        action = "do_nothing"
+        target = list(nodes.keys())[0]
+        found = False
+
+        for node, status in nodes.items():
+            if status == "failed" and node not in restarted:
+                action = "restart_service"
+                target = node
+                restarted.add(node)
+                found = True
+                break
+
+        if not found:
+            for node, status in nodes.items():
+                if status == "critical":
+                    action = "scale_up"
+                    target = node
+                    found = True
+                    break
+
+        if not found:
+            for node, status in nodes.items():
+                if status == "warning":
+                    action = "scale_up"
+                    target = node
+                    break
+
+        obs, reward, done, info = env.step(action, target)
+        total_reward += _get_reward_float(reward)
+        steps_taken += 1
+
         if done:
             break
 
-    steps = max(steps, 1)
-    score = min(max(total_reward / steps, 0.0), 1.0)
-    return float(round(score, 4))
+    if steps_taken == 0:
+        return 0.0
+    return round(min(max(total_reward / steps_taken, 0.0), 1.0), 4)
 
 
-def _choose_action(obs):
-    for node in PRIORITY:
-        if obs.nodes.get(node) == "failed":
-            return "restart_service", node
-    for node in PRIORITY:
-        if obs.nodes.get(node) == "critical":
-            return "scale_up", node
-    for node in PRIORITY:
-        if obs.nodes.get(node) == "warning":
-            return "scale_up", node
-    return None, None
+if __name__ == "__main__":
+    print(f"Hard task score: {run_task()}")

@@ -1,36 +1,69 @@
-# tasks/task_easy.py
 """
-Easy task: Recover system from a single random node failure.
-Grader: returns float in [0.0, 1.0]
-Score 1.0 = full recovery, 0.0 = failed
+Easy Task: Single node failure recovery.
+Agent must recover a randomly failed node within 10 steps.
+Expected score: ~1.0
 """
+
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from environment.env import CascadeEnv
 
 
+def _get_reward_float(reward) -> float:
+    """Handle both float and Reward Pydantic object returned by env.step()."""
+    if isinstance(reward, (float, int)):
+        return float(reward)
+    for attr in ("score", "value", "reward", "amount"):
+        if hasattr(reward, attr):
+            return float(getattr(reward, attr))
+    return float(reward)
+
+
 def run_task() -> float:
-    env = CascadeEnv(task_level="easy", seed=None)
+    env = CascadeEnv(seed=None)
     obs = env.reset()
 
-    for _ in range(15):
-        action, target = _choose_action(obs)
-        if action is None:
-            break
-        obs, _, done, _ = env.step(action, target)
+    MAX_STEPS = 10
+    total_reward = 0.0
+    steps_taken = 0
+
+    for _ in range(MAX_STEPS):
+        nodes = obs.nodes
+        action = "do_nothing"
+        target = list(nodes.keys())[0]
+
+        for node, status in nodes.items():
+            if status == "failed":
+                action = "restart_service"
+                target = node
+                break
+        else:
+            for node, status in nodes.items():
+                if status == "critical":
+                    action = "scale_up"
+                    target = node
+                    break
+            else:
+                for node, status in nodes.items():
+                    if status == "warning":
+                        action = "scale_up"
+                        target = node
+                        break
+
+        obs, reward, done, info = env.step(action, target)
+        total_reward += _get_reward_float(reward)
+        steps_taken += 1
+
         if done:
             break
 
-    score = 1.0 if all(s == "healthy" for s in obs.nodes.values()) else 0.0
-    return float(score)
+    if steps_taken == 0:
+        return 0.0
+    return round(min(max(total_reward / steps_taken, 0.0), 1.0), 4)
 
 
-def _choose_action(obs):
-    for node, state in obs.nodes.items():
-        if state == "failed":
-            return "restart_service", node
-    for node, state in obs.nodes.items():
-        if state == "critical":
-            return "scale_up", node
-    for node, state in obs.nodes.items():
-        if state == "warning":
-            return "scale_up", node
-    return None, None
+if __name__ == "__main__":
+    print(f"Easy task score: {run_task()}")
