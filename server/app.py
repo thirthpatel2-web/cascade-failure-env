@@ -1,19 +1,15 @@
-# server/app.py — Full OpenEnv-compliant server
+# server/app.py
 import os
 import sys
-import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from environment.env import CascadeEnv
-
-# ── FastAPI app ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Cascade Failure Prevention Environment",
@@ -28,22 +24,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Session store: episode_id → CascadeEnv instance
-_sessions: Dict[str, CascadeEnv] = {}
 _default_env: Optional[CascadeEnv] = None
 
 
-# ── OpenEnv required endpoints ────────────────────────────────────────────────
+# ── Required by openenv validate ──────────────────────────────────────────────
 
 @app.get("/health")
 def health():
-    """Required by openenv validate."""
     return {"status": "healthy", "service": "cascade-failure-env"}
 
 
 @app.get("/metadata")
 def metadata():
-    """Required by openenv validate — must return name and description."""
     return {
         "name": "cascade-failure-env",
         "description": (
@@ -57,30 +49,22 @@ def metadata():
 
 @app.get("/schema")
 def schema():
-    """Required by openenv validate — must return action, observation, state schemas."""
     return {
         "action": {
             "type": "object",
             "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": ["restart_service", "scale_up", "do_nothing"],
-                    "description": "Action to take on the target node",
-                },
-                "target": {
-                    "type": "string",
-                    "description": "Node to act on",
-                },
+                "action": {"type": "string", "enum": ["restart_service", "scale_up", "do_nothing"]},
+                "target": {"type": "string"},
             },
             "required": ["action", "target"],
         },
         "observation": {
             "type": "object",
             "properties": {
-                "nodes": {"type": "object", "description": "Node health states"},
-                "metrics": {"type": "object", "description": "System metrics"},
-                "logs": {"type": "array", "description": "Recent log entries"},
-                "failed_nodes": {"type": "array", "description": "Currently failed nodes"},
+                "nodes": {"type": "object"},
+                "metrics": {"type": "object"},
+                "logs": {"type": "array"},
+                "failed_nodes": {"type": "array"},
                 "step": {"type": "integer"},
                 "time_remaining": {"type": "integer"},
             },
@@ -100,37 +84,53 @@ def schema():
 
 @app.post("/mcp")
 def mcp(body: dict = None):
-    """Required by openenv validate — JSON-RPC 2.0 endpoint."""
     return {
         "jsonrpc": "2.0",
         "result": {
             "tools": [
-                {
-                    "name": "restart_service",
-                    "description": "Restart a failed service node",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {"target": {"type": "string"}},
-                        "required": ["target"],
-                    },
-                },
-                {
-                    "name": "scale_up",
-                    "description": "Scale up a degraded service node",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {"target": {"type": "string"}},
-                        "required": ["target"],
-                    },
-                },
-                {
-                    "name": "do_nothing",
-                    "description": "Take no action this step",
-                    "inputSchema": {"type": "object", "properties": {}},
-                },
+                {"name": "restart_service", "description": "Restart a failed service node"},
+                {"name": "scale_up", "description": "Scale up a degraded service node"},
+                {"name": "do_nothing", "description": "Take no action this step"},
             ]
         },
         "id": None,
+    }
+
+
+# ── Tasks with graders — THIS IS WHAT THE SCALER VALIDATOR CHECKS ─────────────
+
+@app.get("/tasks")
+def tasks():
+    return {
+        "tasks": [
+            {
+                "id": "easy",
+                "difficulty": "easy",
+                "max_steps": 15,
+                "description": "Single node failure recovery",
+                "grader": "deterministic",
+                "grader_function": "graders.run_easy",
+                "reward_range": [0.0, 1.0],
+            },
+            {
+                "id": "medium",
+                "difficulty": "medium",
+                "max_steps": 20,
+                "description": "Multi-node degraded state recovery",
+                "grader": "deterministic",
+                "grader_function": "graders.run_medium",
+                "reward_range": [0.0, 1.0],
+            },
+            {
+                "id": "hard",
+                "difficulty": "hard",
+                "max_steps": 25,
+                "description": "Full cascade failure recovery",
+                "grader": "deterministic",
+                "grader_function": "graders.run_hard",
+                "reward_range": [0.0, 1.0],
+            },
+        ]
     }
 
 
@@ -173,18 +173,7 @@ def state():
     return JSONResponse(_default_env.state())
 
 
-@app.get("/tasks")
-def tasks():
-    return {
-        "tasks": [
-            {"id": "easy",   "difficulty": "easy",   "max_steps": 15, "description": "Single node failure recovery"},
-            {"id": "medium", "difficulty": "medium",  "max_steps": 20, "description": "Multi-node degraded state recovery"},
-            {"id": "hard",   "difficulty": "hard",    "max_steps": 25, "description": "Full cascade failure recovery"},
-        ]
-    }
-
-
-# ── Entry point (required by pyproject.toml [project.scripts] server=server.app:main) ──
+# ── Entry point ───────────────────────────────────────────────────────────────
 
 def main():
     import uvicorn
