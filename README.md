@@ -12,6 +12,8 @@ tags:
 
 # 🚨 DevOps Cascade Failure Prevention Environment
 
+[![Live on Hugging Face](https://img.shields.io/badge/▶%20LIVE-Hugging%20Face%20Space-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/ThirthPatel/cascade-failure-env) [![API docs](https://img.shields.io/badge/API-interactive%20docs-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://thirthpatel-cascade-failure-env.hf.space/docs)
+
 > A real-world OpenEnv benchmark where AI agents act as on-call engineers to detect, diagnose, and recover cascading failures in distributed systems.
 
 ---
